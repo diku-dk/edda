@@ -45,6 +45,9 @@ def imap f xs = map2 f (idxs xs) xs
 
 def ifilter f xs = filter (uncurry f) (zip (idxs xs) xs) |> map (.1)
 
+def exscan 'a [n] (op: a -> a -> a) (ne: a) (as: [n]a) : *[n]a =
+  scan op ne (map2 (\i a -> if i == 0 then ne else a) (idxs as) (rotate (-1) as))
+
 type opt 't = #some t | #none
 
 def opt 't x f (o: opt t) =
@@ -68,11 +71,13 @@ def rjustify p xs = xs |> rev |> ljustify p |> rev
 
 def ilog2 n = 63 - i64.clz n
 
+def pad_to k x xs = concat_to k xs (replicate (k - length xs) x)
+
 local def padpow2 lte xs =
   let d = i64.i32 (ilog2 (len xs)) in
   if d < 0 || len xs == 2**d then (copy xs, d)
-  else let largest = reduce_comm (\x y -> if x `lte` y then y else x) xs[0] xs
-       in (xs ++ rep (2**(d+1) - len xs) largest, d+1)
+  else let largest = red (\x y -> if x `lte` y then y else x) xs[0] xs
+       in (pad_to (2**(d+1)) largest xs, d+1)
 
 local def bitonic lte a p q =
   let d = 1 << (p-q) in
@@ -97,7 +102,10 @@ def neq lte x y = if x `lte` y then !(y `lte` x) else true
 def wnexts xs = zip xs (rot 1 xs)
 
 -- | Remove consecutive duplicates.
-def pack lte xs = wnexts xs |> ifilter (\i (x,y) -> i == 0 || neq lte x y)
+def pack lte xs = wnexts xs |> ifilter (\i (x,y) -> i == 0 || neq lte x y) |> map (.0)
 
 -- | Remove all duplicates; does not maintain item order.
 def nub lte xs = sort lte xs |> pack lte
+
+def count 'a (p: a -> bool) (xs: []a): i64 =
+  xs |> map p |> map i64.bool |> i64.sum
