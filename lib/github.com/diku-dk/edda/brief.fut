@@ -57,7 +57,7 @@ def idxof p xs =
 -- | `ljustify (!=0) [0,0,1,2,3] == [1,2,3,0,0]`
 def ljustify p xs = rot (idxof p xs) xs
 
--- | `ljustify (!=0) [1,2,3,0,0] == [0,0,1,2,3]`
+-- | `rjustify (!=0) [1,2,3,0,0] == [0,0,1,2,3]`
 def rjustify p xs = xs |> rev |> ljustify p |> rev
 
 def ilog2 n = 63 - i64.clz n
