@@ -37,7 +37,13 @@ def idxs = indices
 
 def f &&& g = \x -> (f x, g x)
 
+def exactly [n] 't (m: i64) (arr: [n]t) : [m]t = arr :> [m]t
+
+def matches [n][m] 'a 'b (_: [m]b) (as: [n]a) : [m]a = as :> [m]a
+
 def imap f xs = map2 f (idxs xs) xs
+
+def ifilter f xs = filter (uncurry f) (zip (idxs xs) xs) |> map (.1)
 
 type opt 't = #some t | #none
 
@@ -83,10 +89,15 @@ local def bitonic lte a p q =
 
 def sort lte xs =
   let (xs', d) = padpow2 lte xs
-  in take (len xs)
-          (loop xs' for i < d do loop xs' for j < i+1 do bitonic lte xs' i j)
+  in (loop xs' for i < d do loop xs' for j < i+1 do bitonic lte xs' i j)
+     |> take (len xs) |> matches xs
 
-def nub lte xs =
-  let neq x y = if x `lte` y then !(y `lte` x) else true
-  in sort lte xs |> (id &&& rot 1) |> uncurry zip
-     |> imap (\i (x,y) -> (x,i == 0 || neq x y)) |> filter (.1) |> map (.0)
+def neq lte x y = if x `lte` y then !(y `lte` x) else true
+
+def wnexts xs = zip xs (rot 1 xs)
+
+-- | Remove consecutive duplicates.
+def pack lte xs = wnexts xs |> ifilter (\i (x,y) -> i == 0 || neq lte x y)
+
+-- | Remove all duplicates; does not maintain item order.
+def nub lte xs = sort lte xs |> pack lte
