@@ -109,3 +109,13 @@ def nub lte xs = sort lte xs |> pack lte
 
 def count 'a (p: a -> bool) (xs: []a): i64 =
   xs |> map p |> map i64.bool |> i64.sum
+
+def dtoi (c: u8): i64 = i64.u8 c - '0'
+def is_digit (c: u8) = c >= '0' && c <= '9'
+def isnt_digit = not <-< is_digit
+def atoi [n] (s: [n]u8): i64 =
+  let (sign,s) = if n > 0 && s[0] == '-' then (-1,drop 1 s) else (1,s)
+  in sign * (loop (acc,i) = (0,0) while i < length s do
+               if is_digit s[i]
+               then (acc * 10 + dtoi s[i], i+1)
+               else (acc, n)).0
