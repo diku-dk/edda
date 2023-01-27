@@ -27,11 +27,17 @@ def red = reduce
 
 def rev = reverse
 
+def len = length
+
 def idx xs i = xs[(i:i64)]
 
 def gather xs = map (idx xs)
 
 def idxs = indices
+
+def f &&& g = \x -> (f x, g x)
+
+def imap f xs = map2 f (idxs xs) xs
 
 type opt 't = #some t | #none
 
@@ -46,10 +52,41 @@ def opt' 't x y : opt t = opt y (\x -> #some x) x
 def find p xs = xs |> map (guard p) |> reduce opt' #none
 
 def idxof p xs =
-  zip (idxs xs) xs |> find ((.1) >-> p) |> opt (length xs) (.0)
+  zip (idxs xs) xs |> find ((.1) >-> p) |> opt (len xs) (.0)
 
 -- | `ljustify (!=0) [0,0,1,2,3] == [1,2,3,0,0]`
 def ljustify p xs = rotate (idxof p xs) xs
 
 -- | `ljustify (!=0) [1,2,3,0,0] == [0,0,1,2,3]`
 def rjustify p xs = xs |> reverse |> ljustify p |> reverse
+
+def ilog2 n = 63 - i64.clz n
+
+local def padpow2 lte xs =
+  let d = i64.i32 (ilog2 (len xs)) in
+  if d < 0 || len xs == 2**d then (copy xs, d)
+  else let largest = reduce_comm (\x y -> if x `lte` y then y else x) xs[0] xs
+       in (xs ++ rep (2**(d+1) - len xs) largest, d+1)
+
+local def bitonic lte a p q =
+  let d = 1 << (p-q) in
+  let f i a_i =
+    let up1 = ((i >> p) & 2) == 0
+    in if (i & d) == 0
+       then let a_iord = a[i | d] in
+            if (a_iord `lte` a_i) == up1
+            then a_iord else a_i
+       else let a_ixord = a[i ^ d] in
+            if (a_i `lte` a_ixord) == up1
+            then a_ixord else a_i
+  in imap f a
+
+def sort lte xs =
+  let (xs', d) = padpow2 lte xs
+  in take (len xs)
+          (loop xs' for i < d do loop xs' for j < i+1 do bitonic lte xs' i j)
+
+def nub lte xs =
+  let neq x y = if x `lte` y then !(y `lte` x) else true
+  in sort lte xs |> (id &&& rot 1) |> uncurry zip
+     |> imap (\i (x,y) -> (x,i == 0 || neq x y)) |> filter (.1) |> map (.0)
