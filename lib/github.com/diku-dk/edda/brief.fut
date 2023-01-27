@@ -37,9 +37,9 @@ def idxs = indices
 
 def f &&& g = \x -> (f x, g x)
 
-def exactly [n] 't (m: i64) (arr: [n]t) : [m]t = arr :> [m]t
-
 def matches [n][m] 'a 'b (_: [m]b) (as: [n]a) : [m]a = as :> [m]a
+
+def exactly m arr = matches (replicate m []) arr
 
 def imap f xs = map2 f (idxs xs) xs
 
@@ -60,8 +60,7 @@ def opt' 't x y : opt t = opt y (\x -> #some x) x
 
 def find p xs = xs |> map (guard p) |> red opt' #none
 
-def idxof p xs =
-  zip (idxs xs) xs |> find ((.1) >-> p) |> opt (len xs) (.0)
+def idxof p xs = zip (idxs xs) xs |> find ((.1) >-> p) |> opt (len xs) (.0)
 
 -- | `ljustify (!=0) [0,0,1,2,3] == [1,2,3,0,0]`
 def ljustify p xs = rot (idxof p xs) xs
@@ -107,8 +106,7 @@ def pack lte xs = wnexts xs |> ifilter (\i (x,y) -> i == 0 || neq lte x y) |> ma
 -- | Remove all duplicates; does not maintain item order.
 def nub lte xs = sort lte xs |> pack lte
 
-def count 'a (p: a -> bool) (xs: []a): i64 =
-  xs |> map p |> map i64.bool |> i64.sum
+def count p xs = xs |> map p |> map i64.bool |> i64.sum
 
 def dtoi (c: u8): i64 = i64.u8 c - '0'
 def is_digit (c: u8) = c >= '0' && c <= '9'
