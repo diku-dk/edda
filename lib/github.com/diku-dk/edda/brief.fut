@@ -97,14 +97,27 @@ def sort lte xs =
      |> take (len xs) |> matches xs
 
 def neq lte x y = if x `lte` y then !(y `lte` x) else true
+def eq lte x y = (x `lte` y) && (y `lte` x)
 
 def wnexts xs = zip xs (rot 1 xs)
+def wprevs xs = zip xs (rot (-1) xs)
 
 -- | Remove consecutive duplicates.
-def pack lte xs = wnexts xs |> ifilter (\i (x,y) -> i == 0 || neq lte x y) |> map (.0)
+def pack lte xs = wprevs xs |> ifilter (\i (x,y) -> i == 0 || neq lte x y) |> map (.0)
 
 -- | Remove all duplicates; does not maintain item order.
-def nub lte xs = sort lte xs |> pack lte
+--
+-- `dedup (<=) [1,10,2,1,5,2] == [1, 2, 5, 10]`
+def dedup lte xs = sort lte xs |> pack lte
+
+-- | Remove all duplicates; maintains item order.
+--
+-- `nub (<=) [1,10,2,1,5,2] == [1,10,2,1,5,2]`
+def nub lte xs =
+  let lte1 (i, x) (j, y) = if eq lte x y then i <= j else x `lte` y
+  let lte2 (_, x) (_, y) = lte x y
+  let lte3 (i, _) (j, _) = i <= j
+  in zip (idxs xs) xs |> sort lte1 |> pack lte2 |> sort lte3 |> map (.1)
 
 def count p xs = xs |> map p |> map i64.bool |> i64.sum
 
