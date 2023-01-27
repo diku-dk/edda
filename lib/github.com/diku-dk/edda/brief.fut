@@ -49,16 +49,16 @@ def guard 't p x : opt t = if p x then #some x else #none
 
 def opt' 't x y : opt t = opt y (\x -> #some x) x
 
-def find p xs = xs |> map (guard p) |> reduce opt' #none
+def find p xs = xs |> map (guard p) |> red opt' #none
 
 def idxof p xs =
   zip (idxs xs) xs |> find ((.1) >-> p) |> opt (len xs) (.0)
 
 -- | `ljustify (!=0) [0,0,1,2,3] == [1,2,3,0,0]`
-def ljustify p xs = rotate (idxof p xs) xs
+def ljustify p xs = rot (idxof p xs) xs
 
 -- | `ljustify (!=0) [1,2,3,0,0] == [0,0,1,2,3]`
-def rjustify p xs = xs |> reverse |> ljustify p |> reverse
+def rjustify p xs = xs |> rev |> ljustify p |> rev
 
 def ilog2 n = 63 - i64.clz n
 
