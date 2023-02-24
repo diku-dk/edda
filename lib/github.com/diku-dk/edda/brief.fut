@@ -49,6 +49,8 @@ def f &&& g = \x -> (f x, g x)
 
 def matches [n][m] 'a 'b (_: [m]b) (as: [n]a) : [m]a = as :> [m]a
 
+def matching [n][m] 'a 'b (_: [m]b) (as: [n]a) : [m]a = take m as
+
 def exactly m arr = matches (replicate m []) arr
 
 def imap f xs = map2 f (idxs xs) xs
@@ -82,11 +84,12 @@ def ilog2 n = 63 - i64.clz n
 
 def pad_to k x xs = concat_to k xs (replicate (k - length xs) x)
 
+def maximum lte xs = red (\x y -> if x `lte` y then y else x) xs[0] xs
+
 local def padpow2 lte xs =
   let d = i64.i32 (ilog2 (len xs)) in
   if d < 0 || len xs == 2**d then (copy xs, d)
-  else let largest = red (\x y -> if x `lte` y then y else x) xs[0] xs
-       in (pad_to (2**(d+1)) largest xs, d+1)
+  else (pad_to (2**(d+1)) (maximum lte xs) xs, d+1)
 
 local def bitonic lte a p q =
   let d = 1 << (p-q) in
@@ -104,7 +107,7 @@ local def bitonic lte a p q =
 def sort lte xs =
   let (xs', d) = padpow2 lte xs
   in (loop xs' for i < d do loop xs' for j < i+1 do bitonic lte xs' i j)
-     |> take (len xs) |> matches xs
+     |> matching xs
 
 def neq lte x y = if x `lte` y then !(y `lte` x) else true
 def eq lte x y = (x `lte` y) && (y `lte` x)
