@@ -18,6 +18,16 @@
 -- The purpose is still to create reusable polymorphic, higher-order,
 -- and idiomatic Futhark code, just with a specific notion of
 -- "idiomatic".
+--
+-- Style yardsticks:
+--
+--  - Short names, even for functions.
+--
+--  - Single line definitions are ideal; two lines (one for types, one
+--    for body) almost as good.  More than that should be considered
+--    work-in-progress.  (Exception: matching the various cases of a
+--    sum type, but then this should be factored into its own
+--    function).
 
 def rep = replicate
 
@@ -98,6 +108,9 @@ def sort lte xs =
 
 def neq lte x y = if x `lte` y then !(y `lte` x) else true
 def eq lte x y = (x `lte` y) && (y `lte` x)
+def lte0 lte (a,_) (b,_) = a `lte` b
+def lte1 lte (_,x) (_,y) = x `lte` y
+def lte01 lte0 lte1 (a,x) (b,y) = if eq lte0 a b then x `lte1` y else a `lte0` b
 
 def wnexts xs = zip xs (rot 1 xs)
 def wprevs xs = zip xs (rot (-1) xs)
@@ -112,12 +125,9 @@ def dedup lte xs = sort lte xs |> pack lte
 
 -- | Remove all duplicates; maintains item order.
 --
--- `nub (<=) [1,10,2,1,5,2] == [1,10,2,1,5,2]`
+-- `nub (<=) [1,10,2,1,5,2] == [1, 10, 2, 5]`
 def nub lte xs =
-  let lte1 (i, x) (j, y) = if eq lte x y then i <= j else x `lte` y
-  let lte2 (_, x) (_, y) = lte x y
-  let lte3 (i, _) (j, _) = i <= j
-  in zip (idxs xs) xs |> sort lte1 |> pack lte2 |> sort lte3 |> map (.1)
+  zip xs (idxs xs) |> sort (lte01 lte (<=)) |> pack (lte0 lte) |> sort (lte1 (<=)) |> map (.0)
 
 def count p xs = xs |> map p |> map i64.bool |> i64.sum
 
