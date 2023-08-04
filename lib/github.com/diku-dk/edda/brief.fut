@@ -64,7 +64,7 @@ def ifilter f xs = filter (uncurry f) (zip idxs xs) |> map (.1)
 def last_or x xs = if len xs == 0 then x else last xs
 
 def exscan 'a [n] (op: a -> a -> a) (ne: a) (as: [n]a) =
-  scan op ne (map2 (\i a -> if i == 0 then ne else a) idxs (rotate (-1) as))
+  scan op ne (map2 (\i a -> if i == 0 then ne else a) idxs (rot (-1) as))
 
 type opt 't = #some t | #none
 
