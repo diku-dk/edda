@@ -1,5 +1,5 @@
--- Experimenting with a highly succint programming style based on tiny
--- functions, inspired by APL style.
+-- Experimenting with a highly succinct programming style based on
+-- tiny functions, inspired by APL style.
 --
 -- I am somewhat dissatisfied with how clumsy much Futhark code ends
 -- up looking, and I want to check to what extent the language
@@ -28,8 +28,10 @@
 --    work-in-progress.  (Exception: matching the various cases of a
 --    sum type, but then this should be factored into its own
 --    function).
+--
+--  - Implicit size polymorphism, because why not.
 
-def rep = replicate
+def rep [n] = replicate n
 
 def rot = rotate
 
@@ -43,7 +45,7 @@ def idx xs i = xs[(i:i64)]
 
 def gather xs = map (idx xs)
 
-def idxs = indices
+def idxs [n] = iota n
 
 def f &&& g = \x -> (f x, g x)
 
@@ -51,14 +53,18 @@ def matches [n][m] 'a 'b (_: [m]b) (as: [n]a) : [m]a = as :> [m]a
 
 def matching [n][m] 'a 'b (_: [m]b) (as: [n]a) : [m]a = take m as
 
-def exactly m arr = matches (replicate m []) arr
+def islen 'a n (as: [n]a) = as
 
-def imap f xs = map2 f (idxs xs) xs
+def exactly m arr = matches (iota m) arr
 
-def ifilter f xs = filter (uncurry f) (zip (idxs xs) xs) |> map (.1)
+def imap f xs = map2 f idxs xs
 
-def exscan 'a [n] (op: a -> a -> a) (ne: a) (as: [n]a) : *[n]a =
-  scan op ne (map2 (\i a -> if i == 0 then ne else a) (idxs as) (rotate (-1) as))
+def ifilter f xs = filter (uncurry f) (zip idxs xs) |> map (.1)
+
+def last_or x xs = if len xs == 0 then x else last xs
+
+def exscan 'a [n] (op: a -> a -> a) (ne: a) (as: [n]a) =
+  scan op ne (map2 (\i a -> if i == 0 then ne else a) idxs (rotate (-1) as))
 
 type opt 't = #some t | #none
 
@@ -72,7 +78,19 @@ def opt' 't x y : opt t = opt y (\x -> #some x) x
 
 def find p xs = xs |> map (guard p) |> red opt' #none
 
-def idxof p xs = zip (idxs xs) xs |> find ((.1) >-> p) |> opt (len xs) (.0)
+def idxof p xs = zip idxs xs |> find ((.1) >-> p) |> opt (len xs) (.0)
+
+def segop op (x_flag,x) (y_flag,y) =
+  (x_flag || y_flag, if y_flag then y else x `op` y)
+
+def segscan op ne flags as =
+  scan (segop op) (false, ne) (zip flags as) |> map (.1)
+
+def segscan_f op ne f as = segscan op ne (map f as) as
+
+-- | repiota [1,0,2,3] == [0, 2, 2, 3, 3, 3]
+def repiota ns =
+  segscan_f (+) 0 (>0) (hist i64.max 0 (i64.sum ns) (exscan (+) 0 ns) idxs)
 
 -- | `ljustify (!=0) [0,0,1,2,3] == [1,2,3,0,0]`
 def ljustify p xs = rot (idxof p xs) xs
@@ -82,7 +100,7 @@ def rjustify p xs = xs |> rev |> ljustify p |> rev
 
 def ilog2 n = 63 - i64.clz n
 
-def pad_to k x xs = concat_to k xs (replicate (k - length xs) x)
+def pad_to k x xs = sized k (xs++islen (k-len xs) (rep x))
 
 def maximum lte xs = red (\x y -> if x `lte` y then y else x) xs[0] xs
 
@@ -130,7 +148,7 @@ def dedup lte xs = sort lte xs |> pack lte
 --
 -- `nub (<=) [1,10,2,1,5,2] == [1, 10, 2, 5]`
 def nub lte xs =
-  zip xs (idxs xs) |> sort (lte01 lte (<=)) |> pack (lte0 lte) |> sort (lte1 (<=)) |> map (.0)
+  zip xs idxs |> sort (lte01 lte (<=)) |> pack (lte0 lte) |> sort (lte1 (<=)) |> map (.0)
 
 def count p xs = xs |> map p |> map i64.bool |> i64.sum
 
